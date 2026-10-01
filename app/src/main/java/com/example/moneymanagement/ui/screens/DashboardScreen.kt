@@ -10,9 +10,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import java.time.Instant
+import java.time.ZoneOffset
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,6 +57,7 @@ fun DashboardScreen(
     val monthlyTransactions by repository.monthlyTransactions.collectAsState()
     val categories by repository.categories.collectAsState()
     val selectedDate by repository.selectedDate.collectAsState()
+    var showMonthPicker by remember { mutableStateOf(false) }
 
     val catMap = remember(categories) { categories.associateBy { it.id } }
     val accMap = remember(accounts) { accounts.associateBy { it.id } }
@@ -152,8 +154,15 @@ fun DashboardScreen(
                         Icon(Icons.Default.ChevronLeft, contentDescription = "Previous Month", tint = ShadcnTheme.colors.foreground, modifier = Modifier.size(18.dp))
                     }
 
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Icon(Icons.Default.CalendarToday, contentDescription = null, tint = ShadcnTheme.colors.krwAccent, modifier = Modifier.size(16.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { showMonthPicker = true }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Icon(Icons.Default.CalendarToday, contentDescription = "Pick Date", tint = ShadcnTheme.colors.krwAccent, modifier = Modifier.size(16.dp))
                         Text(
                             text = monthHeaderStr,
                             color = ShadcnTheme.colors.foreground,
@@ -380,6 +389,55 @@ fun DashboardScreen(
         // Bottom clearance for Apple floating dock
         item {
             Spacer(modifier = Modifier.height(84.dp))
+        }
+    }
+
+    if (showMonthPicker) {
+        val initialMillis = remember(selectedDate) {
+            selectedDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        }
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
+
+        DatePickerDialog(
+            onDismissRequest = { showMonthPicker = false },
+            confirmButton = {
+                ShadcnButtonText(
+                    text = "Select Month",
+                    variant = ButtonVariant.PRIMARY,
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val picked = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
+                            repository.setSelectedDate(picked)
+                        }
+                        showMonthPicker = false
+                    }
+                )
+            },
+            dismissButton = {
+                ShadcnButtonText(text = "Cancel", variant = ButtonVariant.GHOST, onClick = { showMonthPicker = false })
+            },
+            colors = DatePickerDefaults.colors(containerColor = ShadcnTheme.colors.card),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            DatePicker(
+                state = datePickerState,
+                colors = DatePickerDefaults.colors(
+                    containerColor = ShadcnTheme.colors.card,
+                    titleContentColor = ShadcnTheme.colors.foreground,
+                    headlineContentColor = ShadcnTheme.colors.foreground,
+                    weekdayContentColor = ShadcnTheme.colors.mutedForeground,
+                    subheadContentColor = ShadcnTheme.colors.mutedForeground,
+                    yearContentColor = ShadcnTheme.colors.foreground,
+                    currentYearContentColor = ShadcnTheme.colors.primary,
+                    selectedYearContentColor = ShadcnTheme.colors.primaryForeground,
+                    selectedYearContainerColor = ShadcnTheme.colors.primary,
+                    dayContentColor = ShadcnTheme.colors.foreground,
+                    selectedDayContentColor = ShadcnTheme.colors.primaryForeground,
+                    selectedDayContainerColor = ShadcnTheme.colors.primary,
+                    todayContentColor = ShadcnTheme.colors.primary,
+                    todayDateBorderColor = ShadcnTheme.colors.primary
+                )
+            )
         }
     }
 }

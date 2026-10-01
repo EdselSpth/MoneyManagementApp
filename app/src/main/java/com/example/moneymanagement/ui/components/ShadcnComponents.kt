@@ -17,9 +17,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.text.style.TextOverflow
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -215,6 +219,186 @@ fun ShadcnInput(
                     interactionSource = interactionSource
                 )
             }
+        }
+    }
+}
+
+// --- DATE PICKER FIELD ---
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ShadcnDatePickerField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    label: String? = "Date",
+    quickOptions: List<Pair<String, String>> = emptyList()
+) {
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    val parsedDate = remember(value) {
+        try {
+            LocalDate.parse(value)
+        } catch (_: Exception) {
+            LocalDate.now()
+        }
+    }
+
+    val displayString = remember(parsedDate) {
+        val today = LocalDate.now()
+        val formatted = parsedDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd (EEE)"))
+        when (parsedDate) {
+            today -> "$formatted • Today"
+            today.minusDays(1) -> "$formatted • Yesterday"
+            today.plusDays(1) -> "$formatted • Tomorrow"
+            else -> formatted
+        }
+    }
+
+    Column(modifier = modifier) {
+        if (!label.isNullOrEmpty()) {
+            Text(
+                text = label,
+                color = ShadcnTheme.colors.foreground,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(bottom = 6.dp)
+            )
+        }
+
+        val shape = RoundedCornerShape(10.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .background(ShadcnTheme.colors.input)
+                .border(1.dp, ShadcnTheme.colors.inputBorder, shape)
+                .clickable { showDatePicker = true }
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.DateRange,
+                    contentDescription = "Select Date",
+                    tint = ShadcnTheme.colors.primary,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = displayString,
+                    color = ShadcnTheme.colors.foreground,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(ShadcnTheme.colors.secondary)
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = "Pick",
+                    color = ShadcnTheme.colors.primary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        if (quickOptions.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                quickOptions.forEach { (chipLabel, dateVal) ->
+                    val isSelected = value == dateVal
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (isSelected) ShadcnTheme.colors.primary.copy(alpha = 0.2f) else ShadcnTheme.colors.muted)
+                            .border(1.dp, if (isSelected) ShadcnTheme.colors.primary else Color.Transparent, RoundedCornerShape(6.dp))
+                            .clickable { onValueChange(dateVal) }
+                            .padding(horizontal = 10.dp, vertical = 5.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = chipLabel,
+                            color = if (isSelected) ShadcnTheme.colors.primary else ShadcnTheme.colors.mutedForeground,
+                            fontSize = 11.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    if (showDatePicker) {
+        val initialMillis = remember(parsedDate) {
+            parsedDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        }
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = initialMillis
+        )
+
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                ShadcnButtonText(
+                    text = "Select",
+                    variant = ButtonVariant.PRIMARY,
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val selectedLocalDate = Instant.ofEpochMilli(millis)
+                                .atZone(ZoneOffset.UTC)
+                                .toLocalDate()
+                            onValueChange(selectedLocalDate.toString())
+                        }
+                        showDatePicker = false
+                    }
+                )
+            },
+            dismissButton = {
+                ShadcnButtonText(
+                    text = "Cancel",
+                    variant = ButtonVariant.GHOST,
+                    onClick = { showDatePicker = false }
+                )
+            },
+            colors = DatePickerDefaults.colors(
+                containerColor = ShadcnTheme.colors.card
+            ),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            DatePicker(
+                state = datePickerState,
+                colors = DatePickerDefaults.colors(
+                    containerColor = ShadcnTheme.colors.card,
+                    titleContentColor = ShadcnTheme.colors.foreground,
+                    headlineContentColor = ShadcnTheme.colors.foreground,
+                    weekdayContentColor = ShadcnTheme.colors.mutedForeground,
+                    subheadContentColor = ShadcnTheme.colors.mutedForeground,
+                    yearContentColor = ShadcnTheme.colors.foreground,
+                    currentYearContentColor = ShadcnTheme.colors.primary,
+                    selectedYearContentColor = ShadcnTheme.colors.primaryForeground,
+                    selectedYearContainerColor = ShadcnTheme.colors.primary,
+                    dayContentColor = ShadcnTheme.colors.foreground,
+                    selectedDayContentColor = ShadcnTheme.colors.primaryForeground,
+                    selectedDayContainerColor = ShadcnTheme.colors.primary,
+                    todayContentColor = ShadcnTheme.colors.primary,
+                    todayDateBorderColor = ShadcnTheme.colors.primary
+                )
+            )
         }
     }
 }

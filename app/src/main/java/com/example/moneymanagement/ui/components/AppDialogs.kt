@@ -289,7 +289,17 @@ fun AddTransactionDialog(
                 }
 
                 // Date & Note
-                ShadcnInput(value = dateString, onValueChange = { dateString = it }, label = "Date (YYYY-MM-DD)")
+                val todayStr = remember { LocalDate.now().toString() }
+                val yesterdayStr = remember { LocalDate.now().minusDays(1).toString() }
+                ShadcnDatePickerField(
+                    value = dateString,
+                    onValueChange = { dateString = it },
+                    label = "Date",
+                    quickOptions = listOf(
+                        "Today" to todayStr,
+                        "Yesterday" to yesterdayStr
+                    )
+                )
                 ShadcnInput(value = note, onValueChange = { note = it }, label = "Note / Description", placeholder = "e.g. Dinner with team, Taxi fare")
 
                 // Buttons
@@ -1332,8 +1342,19 @@ fun AddSavingsGoalDialog(isOpen: Boolean, onDismiss: () -> Unit, onSave: (Saving
                 ShadcnInput(value = name, onValueChange = { name = it }, label = "Goal Name", placeholder = "e.g. Jeju Trip, New Laptop")
                 ShadcnInput(value = targetText, onValueChange = { input -> targetText = input.filter { it.isDigit() } }, label = "Target Amount (Won)", prefix = "₩")
                 KrwQuickSelector(currentAmount = targetAmount, onAmountSelected = { targetText = if (it > 0) it.toString() else "" })
-                ShadcnInput(value = initialSavedText, onValueChange = { input -> initialSavedText = input.filter { it.isDigit() } }, label = "Current Saved (Won)", prefix = "₩")
-                ShadcnInput(value = targetDateText, onValueChange = { targetDateText = it }, label = "Target Date (YYYY-MM-DD)")
+                val plus3Mo = remember { LocalDate.now().plusMonths(3).toString() }
+                val plus6Mo = remember { LocalDate.now().plusMonths(6).toString() }
+                val plus1Yr = remember { LocalDate.now().plusYears(1).toString() }
+                ShadcnDatePickerField(
+                    value = targetDateText,
+                    onValueChange = { targetDateText = it },
+                    label = "Target Date",
+                    quickOptions = listOf(
+                        "+3 Mo" to plus3Mo,
+                        "+6 Mo" to plus6Mo,
+                        "+1 Yr" to plus1Yr
+                    )
+                )
                 ShadcnInput(value = note, onValueChange = { note = it }, label = "Notes (Optional)", placeholder = "e.g. Flight tickets & hotel reservation")
 
                 Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End) {

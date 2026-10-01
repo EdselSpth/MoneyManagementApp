@@ -246,13 +246,38 @@ fun AddTransactionDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    ShadcnInput(
-                        value = dateString,
-                        onValueChange = { dateString = it },
-                        label = "날짜 (Date YYYY-MM-DD)",
-                        placeholder = "2026-10-01",
-                        modifier = Modifier.weight(1f)
-                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        ShadcnInput(
+                            value = dateString,
+                            onValueChange = { dateString = it },
+                            label = "날짜 (Date YYYY-MM-DD)",
+                            placeholder = "2026-10-01",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.padding(top = 4.dp)
+                        ) {
+                            val today = LocalDate.now().toString()
+                            val yesterday = LocalDate.now().minusDays(1).toString()
+                            listOf("오늘 (Today)" to today, "어제 (Yesterday)" to yesterday).forEach { (lbl, dVal) ->
+                                val isSelected = dateString == dVal
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(if (isSelected) ShadcnTheme.colors.primary.copy(alpha = 0.2f) else ShadcnTheme.colors.muted)
+                                        .clickable { dateString = dVal }
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = lbl,
+                                        color = if (isSelected) ShadcnTheme.colors.primary else ShadcnTheme.colors.mutedForeground,
+                                        fontSize = 11.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
 
                     ShadcnInput(
                         value = note,

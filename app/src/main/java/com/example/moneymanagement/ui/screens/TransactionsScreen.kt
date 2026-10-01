@@ -10,9 +10,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteOutline
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,17 +44,20 @@ fun TransactionsScreen(
     var searchQuery by remember { mutableStateOf("") }
     var selectedTypeFilter by remember { mutableStateOf<TransactionType?>(null) }
     var selectedCategoryFilter by remember { mutableStateOf<String?>(null) }
+    var selectedDateFilter by remember { mutableStateOf<String?>(null) }
+    var showDateFilterPicker by remember { mutableStateOf(false) }
 
-    val filteredTransactions = remember(allTransactions, searchQuery, selectedTypeFilter, selectedCategoryFilter) {
+    val filteredTransactions = remember(allTransactions, searchQuery, selectedTypeFilter, selectedCategoryFilter, selectedDateFilter) {
         allTransactions.filter { tx ->
             val matchesType = selectedTypeFilter == null || tx.type == selectedTypeFilter
             val matchesCat = selectedCategoryFilter == null || tx.categoryId == selectedCategoryFilter
+            val matchesDate = selectedDateFilter == null || tx.dateString == selectedDateFilter
             val catName = catMap[tx.categoryId]?.name ?: ""
             val matchesSearch = searchQuery.isBlank() ||
                     tx.note.contains(searchQuery, ignoreCase = true) ||
                     catName.contains(searchQuery, ignoreCase = true) ||
                     tx.dateString.contains(searchQuery, ignoreCase = true)
-            matchesType && matchesCat && matchesSearch
+            matchesType && matchesCat && matchesDate && matchesSearch
         }
     }
 
@@ -97,10 +102,78 @@ fun TransactionsScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     ShadcnInput(value = searchQuery, onValueChange = { searchQuery = it }, placeholder = "Search by note, category, date...", prefix = "🔍")
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Chip(text = "All Types", isSelected = selectedTypeFilter == null, onClick = { selectedTypeFilter = null })
                         Chip(text = "Income", isSelected = selectedTypeFilter == TransactionType.INCOME, activeColor = ShadcnTheme.colors.income, onClick = { selectedTypeFilter = TransactionType.INCOME })
                         Chip(text = "Expense", isSelected = selectedTypeFilter == TransactionType.EXPENSE, activeColor = ShadcnTheme.colors.expense, onClick = { selectedTypeFilter = TransactionType.EXPENSE })
+                        Chip(
+                            text = if (selectedDateFilter != null) "📅 $selectedDateFilter ✕" else "📅 Date",
+                            isSelected = selectedDateFilter != null,
+                            activeColor = ShadcnTheme.colors.primary,
+                            onClick = {
+                                if (selectedDateFilter != null) {
+                                    selectedDateFilter = null
+                                } else {
+                                    showDateFilterPicker = true
+                                }
+                            }
+                        )
+                    }
+
+                    if (showDateFilterPicker) {
+                        val initialMillis = remember(selectedDateFilter) {
+                            try {
+                                LocalDate.parse(selectedDateFilter ?: "").atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+                            } catch (_: Exception) {
+                                LocalDate.now().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+                            }
+                        }
+                        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
+
+                        DatePickerDialog(
+                            onDismissRequest = { showDateFilterPicker = false },
+                            confirmButton = {
+                                ShadcnButtonText(
+                                    text = "Filter Date",
+                                    variant = ButtonVariant.PRIMARY,
+                                    onClick = {
+                                        datePickerState.selectedDateMillis?.let { millis ->
+                                            val picked = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
+                                            selectedDateFilter = picked.toString()
+                                        }
+                                        showDateFilterPicker = false
+                                    }
+                                )
+                            },
+                            dismissButton = {
+                                ShadcnButtonText(text = "Cancel", variant = ButtonVariant.GHOST, onClick = { showDateFilterPicker = false })
+                            },
+                            colors = DatePickerDefaults.colors(containerColor = ShadcnTheme.colors.card),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            DatePicker(
+                                state = datePickerState,
+                                colors = DatePickerDefaults.colors(
+                                    containerColor = ShadcnTheme.colors.card,
+                                    titleContentColor = ShadcnTheme.colors.foreground,
+                                    headlineContentColor = ShadcnTheme.colors.foreground,
+                                    weekdayContentColor = ShadcnTheme.colors.mutedForeground,
+                                    subheadContentColor = ShadcnTheme.colors.mutedForeground,
+                                    yearContentColor = ShadcnTheme.colors.foreground,
+                                    currentYearContentColor = ShadcnTheme.colors.primary,
+                                    selectedYearContentColor = ShadcnTheme.colors.primaryForeground,
+                                    selectedYearContainerColor = ShadcnTheme.colors.primary,
+                                    dayContentColor = ShadcnTheme.colors.foreground,
+                                    selectedDayContentColor = ShadcnTheme.colors.primaryForeground,
+                                    selectedDayContainerColor = ShadcnTheme.colors.primary,
+                                    todayContentColor = ShadcnTheme.colors.primary,
+                                    todayDateBorderColor = ShadcnTheme.colors.primary
+                                )
+                            )
+                        }
                     }
 
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

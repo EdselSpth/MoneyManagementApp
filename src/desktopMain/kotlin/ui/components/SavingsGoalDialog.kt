@@ -88,13 +88,39 @@ fun AddSavingsGoalDialog(
                         modifier = Modifier.weight(1f)
                     )
 
-                    ShadcnInput(
-                        value = targetDateText,
-                        onValueChange = { targetDateText = it },
-                        label = "목표 날짜 (Target Date)",
-                        placeholder = "YYYY-MM-DD",
-                        modifier = Modifier.weight(1f)
-                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        ShadcnInput(
+                            value = targetDateText,
+                            onValueChange = { targetDateText = it },
+                            label = "목표 날짜 (Target Date)",
+                            placeholder = "YYYY-MM-DD",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.padding(top = 4.dp)
+                        ) {
+                            val plus3 = LocalDate.now().plusMonths(3).toString()
+                            val plus6 = LocalDate.now().plusMonths(6).toString()
+                            val plus1Yr = LocalDate.now().plusYears(1).toString()
+                            listOf("+3개월" to plus3, "+6개월" to plus6, "+1년" to plus1Yr).forEach { (lbl, dVal) ->
+                                val isSelected = targetDateText == dVal
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(if (isSelected) ShadcnTheme.colors.primary.copy(alpha = 0.2f) else ShadcnTheme.colors.muted)
+                                        .clickable { targetDateText = dVal }
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = lbl,
+                                        color = if (isSelected) ShadcnTheme.colors.primary else ShadcnTheme.colors.mutedForeground,
+                                        fontSize = 11.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
 
                 ShadcnInput(
