@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Soft Drop Shadow under the wallet -->
+    <path
+        android:pathData="M35,72 C42,75 66,75 73,72"
+        android:strokeWidth="5"
+        android:strokeColor="#60000000"
+        android:strokeLineCap="round" />
+
+    <!-- Credit / Bank Card peeking out from top slot -->
+    <path
+        android:pathData="M37,42 V35 A5,5 0 0 1 42,30 H66 A5,5 0 0 1 71,35 V42 Z"
+        android:strokeWidth="1.2"
+        android:strokeColor="#7A6050">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="37"
+                android:startY="30"
+                android:endX="71"
+                android:endY="42"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#5E4A4B" />
+                <item android:offset="1.0" android:color="#443435" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Card Gold Micro-Chip / Strip Accent -->
+    <path
+        android:pathData="M43,36 H52"
+        android:strokeWidth="1.8"
+        android:strokeColor="#DCB37B"
+        android:strokeLineCap="round" />
+
+    <!-- Main Wallet Body (Minimalist Rounded Cardholder Form) -->
+    <path
+        android:pathData="M37,41 H71 A7,7 0 0 1 78,48 V64 A7,7 0 0 1 71,71 H37 A7,7 0 0 1 30,64 V48 A7,7 0 0 1 37,41 Z"
+        android:strokeWidth="1.5">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="30"
+                android:startY="41"
+                android:endX="78"
+                android:endY="71"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#DCB37B" />
+                <item android:offset="0.5" android:color="#A08066" />
+                <item android:offset="1.0" android:color="#DCB37B" />
+            </gradient>
+        </aapt:attr>
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="54"
+                android:startY="41"
+                android:endX="54"
+                android:endY="71"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#3A2D2E" />
+                <item android:offset="1.0" android:color="#251B1C" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Wallet Pocket Seam Curve -->
+    <path
+        android:pathData="M30,49 C42,54 66,54 78,49"
+        android:strokeWidth="1.2"
+        android:strokeColor="#50DCB37B" />
+
+    <!-- Wallet Right Horizontal Clasp Strap Accent -->
+    <path
+        android:pathData="M66,53.5 H78 M66,59.5 H78"
+        android:strokeWidth="1.0"
+        android:strokeColor="#40DCB37B" />
+
+    <!-- Central Circular Clasp Plate -->
+    <path
+        android:pathData="M54,56.5m-11.5,0a11.5,11.5 0 1 1,23 0a11.5,11.5 0 1 1,-23 0"
+        android:strokeWidth="1.2"
+        android:strokeColor="#80DCB37B">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="54"
+                android:startY="45"
+                android:endX="54"
+                android:endY="68"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#2F2324" />
+                <item android:offset="1.0" android:color="#1A1213" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Subtle Drop Shadow for the Star Emblem -->
+    <path
+        android:fillColor="#50000000"
+        android:pathData="M54,48 L56.15,53.78 L63.09,52.25 L58.30,57.5 L63.09,62.75 L56.15,61.22 L54,68 L51.85,61.22 L44.91,62.75 L49.70,57.5 L44.91,52.25 L51.85,53.78 Z" />
+
+    <!-- 6-Pointed Minimalist Golden Star (Primary Identity Emblem) -->
+    <path
+        android:pathData="M54,47 L56.15,52.78 L63.09,51.25 L58.30,56.5 L63.09,61.75 L56.15,60.22 L54,67 L51.85,60.22 L44.91,61.75 L49.70,56.5 L44.91,51.25 L51.85,52.78 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="54"
+                android:startY="47"
+                android:endX="54"
+                android:endY="67"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FAF0D9" />
+                <item android:offset="0.3" android:color="#E6C48F" />
+                <item android:offset="0.7" android:color="#DCB37B" />
+                <item android:offset="1.0" android:color="#B88A4A" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Star Center Brilliant Core Sparkle -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,54.5 L55,56.5 L57,56.5 L55.5,57.7 L56,59.5 L54,58.3 L52,59.5 L52.5,57.7 L51,56.5 L53,56.5 Z" />
+</vector>
