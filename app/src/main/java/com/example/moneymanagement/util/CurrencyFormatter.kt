@@ -18,7 +18,11 @@ object CurrencyFormatter {
 
     fun formatTransaction(amount: Long, type: com.example.moneymanagement.data.model.TransactionType): String {
         val formatted = format(amount)
-        return if (type == com.example.moneymanagement.data.model.TransactionType.INCOME) "+$formatted" else "-$formatted"
+        return when (type) {
+            com.example.moneymanagement.data.model.TransactionType.INCOME -> "+$formatted"
+            com.example.moneymanagement.data.model.TransactionType.EXPENSE -> "-$formatted"
+            com.example.moneymanagement.data.model.TransactionType.TRANSFER -> "⇄ $formatted"
+        }
     }
 
     fun parse(text: String): Long {

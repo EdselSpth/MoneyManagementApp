@@ -70,19 +70,69 @@ fun TransactionsScreen(
     ) {
         // Header
         item {
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Column {
-                    Text(text = "Transactions", color = ShadcnTheme.colors.foreground, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                    Text(text = "Search & filter all income and expenses", color = ShadcnTheme.colors.mutedForeground, fontSize = 13.sp)
+                    Text(
+                        text = "Transactions",
+                        color = ShadcnTheme.colors.foreground,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Search & filter all income, expenses, and transfers",
+                        color = ShadcnTheme.colors.mutedForeground,
+                        fontSize = 13.sp
+                    )
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ShadcnButtonText(text = "+ Expense", variant = ButtonVariant.DESTRUCTIVE, onClick = { onOpenAddTransaction(TransactionType.EXPENSE) })
-                    ShadcnButtonText(text = "+ Income", variant = ButtonVariant.PRIMARY, onClick = { onOpenAddTransaction(TransactionType.INCOME) })
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ShadcnButton(
+                        onClick = { onOpenAddTransaction(TransactionType.EXPENSE) },
+                        modifier = Modifier.weight(1f),
+                        variant = ButtonVariant.DESTRUCTIVE,
+                        contentPadding = PaddingValues(vertical = 10.dp)
+                    ) {
+                        Text(
+                            text = "+ Expense",
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    ShadcnButton(
+                        onClick = { onOpenAddTransaction(TransactionType.INCOME) },
+                        modifier = Modifier.weight(1f),
+                        variant = ButtonVariant.PRIMARY,
+                        contentPadding = PaddingValues(vertical = 10.dp)
+                    ) {
+                        Text(
+                            text = "+ Income",
+                            color = ShadcnTheme.colors.primaryForeground,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    ShadcnButton(
+                        onClick = { onOpenAddTransaction(TransactionType.TRANSFER) },
+                        modifier = Modifier.weight(1f),
+                        variant = ButtonVariant.SECONDARY,
+                        contentPadding = PaddingValues(vertical = 10.dp)
+                    ) {
+                        Text(
+                            text = "⇄ Transfer",
+                            color = ShadcnTheme.colors.foreground,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
@@ -109,6 +159,7 @@ fun TransactionsScreen(
                         Chip(text = "All Types", isSelected = selectedTypeFilter == null, onClick = { selectedTypeFilter = null })
                         Chip(text = "Income", isSelected = selectedTypeFilter == TransactionType.INCOME, activeColor = ShadcnTheme.colors.income, onClick = { selectedTypeFilter = TransactionType.INCOME })
                         Chip(text = "Expense", isSelected = selectedTypeFilter == TransactionType.EXPENSE, activeColor = ShadcnTheme.colors.expense, onClick = { selectedTypeFilter = TransactionType.EXPENSE })
+                        Chip(text = "Transfer", isSelected = selectedTypeFilter == TransactionType.TRANSFER, activeColor = ShadcnTheme.colors.primary, onClick = { selectedTypeFilter = TransactionType.TRANSFER })
                         Chip(
                             text = if (selectedDateFilter != null) "📅 $selectedDateFilter ✕" else "📅 Date",
                             isSelected = selectedDateFilter != null,
@@ -219,9 +270,18 @@ fun TransactionsScreen(
                             }
 
                             val acc = accMap[tx.accountId]
+                            val toAcc = accMap[tx.toAccountId]
+                            val isTransfer = tx.type == TransactionType.TRANSFER
+
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = if (tx.note.isNotBlank()) tx.note else cat?.name ?: "Transaction",
+                                    text = if (tx.note.isNotBlank()) {
+                                        tx.note
+                                    } else if (isTransfer && acc != null && toAcc != null) {
+                                        "${acc.name} ➔ ${toAcc.name}"
+                                    } else {
+                                        cat?.name ?: "Transaction"
+                                    },
                                     color = ShadcnTheme.colors.foreground,
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.SemiBold,
@@ -235,10 +295,16 @@ fun TransactionsScreen(
                                 ) {
                                     Text(text = tx.dateString, color = ShadcnTheme.colors.mutedForeground, fontSize = 12.sp, maxLines = 1)
                                     Text(text = "•", color = ShadcnTheme.colors.mutedForeground, fontSize = 12.sp)
-                                    Text(text = cat?.name ?: "", color = catColor, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    if (acc != null || tx.paymentMethod.label.isNotBlank()) {
+                                    if (isTransfer && acc != null && toAcc != null) {
+                                        Text(text = "Transfer", color = ShadcnTheme.colors.primary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                         Text(text = "•", color = ShadcnTheme.colors.mutedForeground, fontSize = 12.sp)
-                                        Text(text = acc?.name ?: tx.paymentMethod.label, color = ShadcnTheme.colors.mutedForeground, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Text(text = "${acc.name} ➔ ${toAcc.name}", color = ShadcnTheme.colors.mutedForeground, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    } else {
+                                        Text(text = cat?.name ?: "", color = catColor, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        if (acc != null || tx.paymentMethod.label.isNotBlank()) {
+                                            Text(text = "•", color = ShadcnTheme.colors.mutedForeground, fontSize = 12.sp)
+                                            Text(text = acc?.name ?: tx.paymentMethod.label, color = ShadcnTheme.colors.mutedForeground, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        }
                                     }
                                 }
                             }
@@ -247,7 +313,11 @@ fun TransactionsScreen(
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(
                                 text = CurrencyFormatter.formatTransaction(tx.amount, tx.type),
-                                color = if (tx.type == TransactionType.INCOME) ShadcnTheme.colors.income else ShadcnTheme.colors.expense,
+                                color = when (tx.type) {
+                                    TransactionType.INCOME -> ShadcnTheme.colors.income
+                                    TransactionType.EXPENSE -> ShadcnTheme.colors.expense
+                                    TransactionType.TRANSFER -> ShadcnTheme.colors.primary
+                                },
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1

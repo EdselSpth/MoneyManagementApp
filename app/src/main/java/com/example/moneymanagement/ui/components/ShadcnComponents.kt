@@ -562,6 +562,7 @@ fun CategoryIcon(
         "Palette" -> Icons.Default.Palette
         "Savings" -> Icons.Default.Savings
         "Star" -> Icons.Default.Star
+        "SwapHoriz" -> Icons.Default.SwapHoriz
         else -> Icons.Default.Category
     }
 

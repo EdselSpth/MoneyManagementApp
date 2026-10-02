@@ -134,7 +134,8 @@ fun DashboardScreen(
                 onCardClick = { onTopUpAccount(it) },
                 onTopUpClick = { onTopUpAccount(it) },
                 onAddNewCard = onAddNewCard,
-                onManageCards = onManageCards
+                onManageCards = onManageCards,
+                onTransferClick = { onOpenAddTransaction(TransactionType.TRANSFER) }
             )
         }
 
@@ -232,27 +233,38 @@ fun DashboardScreen(
 
         // Quick Action Buttons
         item {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ShadcnButton(
                     onClick = { onOpenAddTransaction(TransactionType.EXPENSE) },
                     modifier = Modifier.weight(1f),
                     variant = ButtonVariant.DESTRUCTIVE,
-                    contentPadding = PaddingValues(vertical = 12.dp)
+                    contentPadding = PaddingValues(vertical = 11.dp)
                 ) {
-                    Icon(Icons.Default.RemoveCircleOutline, contentDescription = "-", tint = Color.White, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(text = "Add Expense", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Icon(Icons.Default.RemoveCircleOutline, contentDescription = "-", tint = Color.White, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(text = "Expense", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
 
                 ShadcnButton(
                     onClick = { onOpenAddTransaction(TransactionType.INCOME) },
                     modifier = Modifier.weight(1f),
                     variant = ButtonVariant.PRIMARY,
-                    contentPadding = PaddingValues(vertical = 12.dp)
+                    contentPadding = PaddingValues(vertical = 11.dp)
                 ) {
-                    Icon(Icons.Default.AddCircleOutline, contentDescription = "+", tint = ShadcnTheme.colors.primaryForeground, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(text = "Add Income", color = ShadcnTheme.colors.primaryForeground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Icon(Icons.Default.AddCircleOutline, contentDescription = "+", tint = ShadcnTheme.colors.primaryForeground, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(text = "Income", color = ShadcnTheme.colors.primaryForeground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                }
+
+                ShadcnButton(
+                    onClick = { onOpenAddTransaction(TransactionType.TRANSFER) },
+                    modifier = Modifier.weight(1f),
+                    variant = ButtonVariant.SECONDARY,
+                    contentPadding = PaddingValues(vertical = 11.dp)
+                ) {
+                    CategoryIcon(iconName = "SwapHoriz", tint = ShadcnTheme.colors.foreground, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(text = "Transfer", color = ShadcnTheme.colors.foreground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -353,9 +365,18 @@ fun DashboardScreen(
                                     }
 
                                     val acc = accMap[tx.accountId]
+                                    val toAcc = accMap[tx.toAccountId]
+                                    val isTransfer = tx.type == TransactionType.TRANSFER
+
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            text = if (tx.note.isNotBlank()) tx.note else cat?.name ?: "Transaction",
+                                            text = if (tx.note.isNotBlank()) {
+                                                tx.note
+                                            } else if (isTransfer && acc != null && toAcc != null) {
+                                                "${acc.name} ➔ ${toAcc.name}"
+                                            } else {
+                                                cat?.name ?: "Transaction"
+                                            },
                                             color = ShadcnTheme.colors.foreground,
                                             fontSize = 14.sp,
                                             fontWeight = FontWeight.SemiBold,
@@ -363,7 +384,11 @@ fun DashboardScreen(
                                             overflow = TextOverflow.Ellipsis
                                         )
                                         Text(
-                                            text = "${tx.dateString} • ${cat?.name ?: ""}${if (acc != null) " • ${acc.name}" else ""}",
+                                            text = if (isTransfer && acc != null && toAcc != null) {
+                                                "${tx.dateString} • Transfer • ${acc.name} ➔ ${toAcc.name}"
+                                            } else {
+                                                "${tx.dateString} • ${cat?.name ?: ""}${if (acc != null) " • ${acc.name}" else ""}"
+                                            },
                                             color = ShadcnTheme.colors.mutedForeground,
                                             fontSize = 12.sp,
                                             maxLines = 1,
@@ -374,7 +399,11 @@ fun DashboardScreen(
 
                                 Text(
                                     text = CurrencyFormatter.formatTransaction(tx.amount, tx.type),
-                                    color = if (tx.type == TransactionType.INCOME) ShadcnTheme.colors.income else ShadcnTheme.colors.expense,
+                                    color = when (tx.type) {
+                                        TransactionType.INCOME -> ShadcnTheme.colors.income
+                                        TransactionType.EXPENSE -> ShadcnTheme.colors.expense
+                                        TransactionType.TRANSFER -> ShadcnTheme.colors.primary
+                                    },
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 1

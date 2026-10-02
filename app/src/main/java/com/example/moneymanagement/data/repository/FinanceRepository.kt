@@ -268,11 +268,17 @@ class FinanceRepository(
         val categorySpendMap = mutableMapOf<String, Long>()
 
         mTx.forEach { tx ->
-            if (tx.type == TransactionType.INCOME) {
-                inc += tx.amount
-            } else {
-                exp += tx.amount
-                categorySpendMap[tx.categoryId] = (categorySpendMap[tx.categoryId] ?: 0L) + tx.amount
+            when (tx.type) {
+                TransactionType.INCOME -> {
+                    inc += tx.amount
+                }
+                TransactionType.EXPENSE -> {
+                    exp += tx.amount
+                    categorySpendMap[tx.categoryId] = (categorySpendMap[tx.categoryId] ?: 0L) + tx.amount
+                }
+                TransactionType.TRANSFER -> {
+                    // Internal transfer: does not count towards external Income or Expense!
+                }
             }
         }
 

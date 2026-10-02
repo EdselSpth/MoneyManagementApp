@@ -51,19 +51,23 @@ fun AddTransactionDialog(
 ) {
     if (!isOpen) return
 
-    var type by remember { mutableStateOf(initialType) }
-    var amountText by remember { mutableStateOf("") }
-    var note by remember { mutableStateOf("") }
-    var dateString by remember { mutableStateOf(LocalDate.now().toString()) }
+    var type by remember(initialType, isOpen) { mutableStateOf(initialType) }
+    var amountText by remember(isOpen) { mutableStateOf("") }
+    var note by remember(isOpen) { mutableStateOf("") }
+    var dateString by remember(isOpen) { mutableStateOf(LocalDate.now().toString()) }
     var paymentMethod by remember { mutableStateOf(PaymentMethod.CARD) }
 
     val filteredCategories = categories.filter { it.type == type }
-    var selectedCategoryId by remember(type) {
+    var selectedCategoryId by remember(type, categories) {
         mutableStateOf(filteredCategories.firstOrNull()?.id ?: "")
     }
 
-    var selectedAccountId by remember(accounts) {
+    var selectedAccountId by remember(accounts, isOpen) {
         mutableStateOf(accounts.firstOrNull { it.isDefault }?.id ?: accounts.firstOrNull()?.id ?: "")
+    }
+
+    var selectedToAccountId by remember(accounts, selectedAccountId, isOpen) {
+        mutableStateOf(accounts.firstOrNull { it.id != selectedAccountId }?.id ?: "")
     }
 
     val currentAmount = amountText.toLongOrNull() ?: 0L
@@ -83,15 +87,22 @@ fun AddTransactionDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = if (type == TransactionType.EXPENSE) "Add Expense" else "Add Income",
+                        text = when (type) {
+                            TransactionType.EXPENSE -> "Add Expense"
+                            TransactionType.INCOME -> "Add Income"
+                            TransactionType.TRANSFER -> "Transfer Funds"
+                        },
                         color = ShadcnTheme.colors.foreground,
                         fontSize = 19.sp,
                         fontWeight = FontWeight.Bold
                     )
-                    ShadcnBadge(text = "₩ KRW", variant = BadgeVariant.KRW)
+                    ShadcnBadge(
+                        text = if (type == TransactionType.TRANSFER) "⇄ Transfer" else "₩ KRW",
+                        variant = if (type == TransactionType.TRANSFER) BadgeVariant.DEFAULT else BadgeVariant.KRW
+                    )
                 }
 
-                // Type Toggle
+                // Type Toggle (Expense / Income / Transfer)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -113,7 +124,7 @@ fun AddTransactionDialog(
                         Text(
                             text = "Expense",
                             color = if (expSelected) Color.White else ShadcnTheme.colors.mutedForeground,
-                            fontSize = 14.sp,
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -131,17 +142,36 @@ fun AddTransactionDialog(
                         Text(
                             text = "Income",
                             color = if (incSelected) Color.White else ShadcnTheme.colors.mutedForeground,
-                            fontSize = 14.sp,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    val transSelected = type == TransactionType.TRANSFER
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (transSelected) ShadcnTheme.colors.primary else Color.Transparent)
+                            .clickable { type = TransactionType.TRANSFER }
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Transfer",
+                            color = if (transSelected) ShadcnTheme.colors.primaryForeground else ShadcnTheme.colors.mutedForeground,
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
                 }
 
-                // Card / Account Selector
-                if (accounts.isNotEmpty()) {
+                // Account Selection
+                if (type == TransactionType.TRANSFER) {
+                    // Transfer: From Account
                     Column {
                         Text(
-                            text = "Payment Card / Account",
+                            text = "From Account (Source)",
                             color = ShadcnTheme.colors.foreground,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
@@ -159,19 +189,15 @@ fun AddTransactionDialog(
                                         .border(1.5.dp, if (isSelected) accColor else ShadcnTheme.colors.cardBorder, RoundedCornerShape(8.dp))
                                         .clickable {
                                             selectedAccountId = acc.id
-                                            if (acc.type == AccountType.CASH) {
-                                                paymentMethod = PaymentMethod.CASH
-                                            } else if (acc.type == AccountType.TRANSIT) {
-                                                paymentMethod = PaymentMethod.CARD
+                                            if (selectedToAccountId == acc.id) {
+                                                selectedToAccountId = accounts.firstOrNull { it.id != acc.id }?.id ?: ""
                                             }
                                         }
                                         .padding(horizontal = 10.dp, vertical = 7.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    Box(
-                                        modifier = Modifier.size(8.dp).clip(CircleShape).background(accColor)
-                                    )
+                                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(accColor))
                                     Text(
                                         text = acc.name,
                                         color = if (isSelected) Color.White else ShadcnTheme.colors.foreground,
@@ -184,6 +210,141 @@ fun AddTransactionDialog(
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold
                                     )
+                                }
+                            }
+                        }
+                    }
+
+                    // Transfer: To Account
+                    val availableDestinations = accounts.filter { it.id != selectedAccountId }
+                    Column {
+                        Text(
+                            text = "To Account (Destination)",
+                            color = ShadcnTheme.colors.foreground,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(bottom = 6.dp)
+                        )
+                        if (availableDestinations.isEmpty()) {
+                            Text(
+                                text = "Please add at least 2 accounts to make a transfer.",
+                                color = ShadcnTheme.colors.mutedForeground,
+                                fontSize = 12.sp
+                            )
+                        } else {
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                items(availableDestinations) { acc ->
+                                    val isSelected = acc.id == selectedToAccountId
+                                    val accColor = ColorParser.parse(acc.colorStartHex, ShadcnTheme.colors.primary)
+
+                                    Row(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(if (isSelected) accColor.copy(alpha = 0.25f) else ShadcnTheme.colors.secondary)
+                                            .border(1.5.dp, if (isSelected) accColor else ShadcnTheme.colors.cardBorder, RoundedCornerShape(8.dp))
+                                            .clickable { selectedToAccountId = acc.id }
+                                            .padding(horizontal = 10.dp, vertical = 7.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(accColor))
+                                        Text(
+                                            text = acc.name,
+                                            color = if (isSelected) Color.White else ShadcnTheme.colors.foreground,
+                                            fontSize = 12.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                        )
+                                        Text(
+                                            text = CurrencyFormatter.format(acc.balance),
+                                            color = if (isSelected) accColor else ShadcnTheme.colors.mutedForeground,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Transfer Neutral Cashflow Info
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(ShadcnTheme.colors.primary.copy(alpha = 0.10f))
+                            .border(1.dp, ShadcnTheme.colors.primary.copy(alpha = 0.25f), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        CategoryIcon(
+                            iconName = "SwapHoriz",
+                            tint = ShadcnTheme.colors.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Column {
+                            Text(
+                                text = "Internal Wallet Transfer",
+                                color = ShadcnTheme.colors.foreground,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Transfers do not count as Income or Expense, keeping analytics pure.",
+                                color = ShadcnTheme.colors.mutedForeground,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+                } else {
+                    // Normal Expense/Income: Single Account Selector
+                    if (accounts.isNotEmpty()) {
+                        Column {
+                            Text(
+                                text = "Payment Card / Account",
+                                color = ShadcnTheme.colors.foreground,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(bottom = 6.dp)
+                            )
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                items(accounts) { acc ->
+                                    val isSelected = acc.id == selectedAccountId
+                                    val accColor = ColorParser.parse(acc.colorStartHex, ShadcnTheme.colors.primary)
+
+                                    Row(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(if (isSelected) accColor.copy(alpha = 0.25f) else ShadcnTheme.colors.secondary)
+                                            .border(1.5.dp, if (isSelected) accColor else ShadcnTheme.colors.cardBorder, RoundedCornerShape(8.dp))
+                                            .clickable {
+                                                selectedAccountId = acc.id
+                                                if (acc.type == AccountType.CASH) {
+                                                    paymentMethod = PaymentMethod.CASH
+                                                } else if (acc.type == AccountType.TRANSIT) {
+                                                    paymentMethod = PaymentMethod.CARD
+                                                }
+                                            }
+                                            .padding(horizontal = 10.dp, vertical = 7.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier.size(8.dp).clip(CircleShape).background(accColor)
+                                        )
+                                        Text(
+                                            text = acc.name,
+                                            color = if (isSelected) Color.White else ShadcnTheme.colors.foreground,
+                                            fontSize = 12.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                        )
+                                        Text(
+                                            text = CurrencyFormatter.format(acc.balance),
+                                            color = if (isSelected) accColor else ShadcnTheme.colors.mutedForeground,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -203,7 +364,11 @@ fun AddTransactionDialog(
                     if (currentAmount > 0) {
                         Text(
                             text = "Formatted: ${CurrencyFormatter.format(currentAmount)}",
-                            color = if (type == TransactionType.INCOME) ShadcnTheme.colors.income else ShadcnTheme.colors.expense,
+                            color = when (type) {
+                                TransactionType.INCOME -> ShadcnTheme.colors.income
+                                TransactionType.EXPENSE -> ShadcnTheme.colors.expense
+                                TransactionType.TRANSFER -> ShadcnTheme.colors.primary
+                            },
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(top = 4.dp)
@@ -219,70 +384,72 @@ fun AddTransactionDialog(
                     }
                 )
 
-                // Category
-                Column {
-                    Text(
-                        text = "Category",
-                        color = ShadcnTheme.colors.foreground,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(bottom = 6.dp)
-                    )
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        items(filteredCategories) { cat ->
-                            val isSelected = cat.id == selectedCategoryId
-                            val catColor = ColorParser.parse(cat.colorHex, ShadcnTheme.colors.primary)
+                // Category (only for Expense/Income)
+                if (type != TransactionType.TRANSFER) {
+                    Column {
+                        Text(
+                            text = "Category",
+                            color = ShadcnTheme.colors.foreground,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(bottom = 6.dp)
+                        )
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                            items(filteredCategories) { cat ->
+                                val isSelected = cat.id == selectedCategoryId
+                                val catColor = ColorParser.parse(cat.colorHex, ShadcnTheme.colors.primary)
 
-                            Row(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(if (isSelected) catColor.copy(alpha = 0.25f) else ShadcnTheme.colors.secondary)
-                                    .border(1.5.dp, if (isSelected) catColor else ShadcnTheme.colors.cardBorder, RoundedCornerShape(8.dp))
-                                    .clickable { selectedCategoryId = cat.id }
-                                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                CategoryIcon(iconName = cat.iconName, tint = catColor, modifier = Modifier.size(16.dp))
-                                Text(
-                                    text = cat.name,
-                                    color = if (isSelected) Color.White else ShadcnTheme.colors.foreground,
-                                    fontSize = 13.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                )
+                                Row(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) catColor.copy(alpha = 0.25f) else ShadcnTheme.colors.secondary)
+                                        .border(1.5.dp, if (isSelected) catColor else ShadcnTheme.colors.cardBorder, RoundedCornerShape(8.dp))
+                                        .clickable { selectedCategoryId = cat.id }
+                                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    CategoryIcon(iconName = cat.iconName, tint = catColor, modifier = Modifier.size(16.dp))
+                                    Text(
+                                        text = cat.name,
+                                        color = if (isSelected) Color.White else ShadcnTheme.colors.foreground,
+                                        fontSize = 13.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                }
                             }
                         }
                     }
-                }
 
-                // Payment Method
-                Column {
-                    Text(
-                        text = "Payment Method",
-                        color = ShadcnTheme.colors.foreground,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(bottom = 6.dp)
-                    )
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        PaymentMethod.entries.forEach { method ->
-                            val isSelected = method == paymentMethod
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(if (isSelected) ShadcnTheme.colors.primary.copy(alpha = 0.2f) else ShadcnTheme.colors.secondary)
-                                    .border(1.5.dp, if (isSelected) ShadcnTheme.colors.primary else ShadcnTheme.colors.cardBorder, RoundedCornerShape(8.dp))
-                                    .clickable { paymentMethod = method }
-                                    .padding(vertical = 8.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = method.label,
-                                    color = if (isSelected) ShadcnTheme.colors.primary else ShadcnTheme.colors.foreground,
-                                    fontSize = 12.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                                )
+                    // Payment Method
+                    Column {
+                        Text(
+                            text = "Payment Method",
+                            color = ShadcnTheme.colors.foreground,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(bottom = 6.dp)
+                        )
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            PaymentMethod.entries.forEach { method ->
+                                val isSelected = method == paymentMethod
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) ShadcnTheme.colors.primary.copy(alpha = 0.2f) else ShadcnTheme.colors.secondary)
+                                        .border(1.5.dp, if (isSelected) ShadcnTheme.colors.primary else ShadcnTheme.colors.cardBorder, RoundedCornerShape(8.dp))
+                                        .clickable { paymentMethod = method }
+                                        .padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = method.label,
+                                        color = if (isSelected) ShadcnTheme.colors.primary else ShadcnTheme.colors.foreground,
+                                        fontSize = 12.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                    )
+                                }
                             }
                         }
                     }
@@ -300,9 +467,17 @@ fun AddTransactionDialog(
                         "Yesterday" to yesterdayStr
                     )
                 )
-                ShadcnInput(value = note, onValueChange = { note = it }, label = "Note / Description", placeholder = "e.g. Dinner with team, Taxi fare")
+                ShadcnInput(
+                    value = note,
+                    onValueChange = { note = it },
+                    label = "Note / Description",
+                    placeholder = if (type == TransactionType.TRANSFER) "e.g. ATM cash withdrawal, Top up Toss" else "e.g. Dinner with team, Taxi fare"
+                )
 
                 // Buttons
+                val isTransferValid = type == TransactionType.TRANSFER && currentAmount > 0 && selectedAccountId.isNotBlank() && selectedToAccountId.isNotBlank() && selectedAccountId != selectedToAccountId
+                val isNormalValid = type != TransactionType.TRANSFER && currentAmount > 0 && selectedCategoryId.isNotEmpty()
+
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     horizontalArrangement = Arrangement.End,
@@ -310,21 +485,28 @@ fun AddTransactionDialog(
                 ) {
                     ShadcnButtonText(text = "Cancel", variant = ButtonVariant.GHOST, onClick = onDismiss, modifier = Modifier.padding(end = 8.dp))
                     ShadcnButtonText(
-                        text = "Save Transaction",
+                        text = if (type == TransactionType.TRANSFER) "Transfer Funds" else "Save Transaction",
                         variant = ButtonVariant.PRIMARY,
-                        enabled = currentAmount > 0 && selectedCategoryId.isNotEmpty(),
+                        enabled = isTransferValid || isNormalValid,
                         onClick = {
-                            if (currentAmount > 0 && selectedCategoryId.isNotEmpty()) {
+                            if (isTransferValid || isNormalValid) {
+                                val finalCategoryId = if (type == TransactionType.TRANSFER) {
+                                    categories.firstOrNull { it.id == "cat_transfer" || it.type == TransactionType.TRANSFER }?.id ?: "cat_transfer"
+                                } else {
+                                    selectedCategoryId
+                                }
+
                                 onSave(
                                     Transaction(
                                         id = UUID.randomUUID().toString(),
                                         type = type,
                                         amount = currentAmount,
-                                        categoryId = selectedCategoryId,
+                                        categoryId = finalCategoryId,
                                         dateString = dateString.trim().ifEmpty { LocalDate.now().toString() },
                                         note = note.trim(),
-                                        paymentMethod = paymentMethod,
-                                        accountId = selectedAccountId.ifEmpty { null }
+                                        paymentMethod = if (type == TransactionType.TRANSFER) PaymentMethod.BANK_TRANSFER else paymentMethod,
+                                        accountId = selectedAccountId.ifEmpty { null },
+                                        toAccountId = if (type == TransactionType.TRANSFER) selectedToAccountId.ifEmpty { null } else null
                                     )
                                 )
                                 onDismiss()

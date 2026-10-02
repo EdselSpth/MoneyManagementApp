@@ -5,7 +5,8 @@ import kotlinx.serialization.Serializable
 @Serializable
 enum class TransactionType {
     INCOME,
-    EXPENSE
+    EXPENSE,
+    TRANSFER
 }
 
 @Serializable
@@ -66,7 +67,8 @@ data class Transaction(
     val note: String = "",
     val paymentMethod: PaymentMethod = PaymentMethod.CARD,
     val createdAt: Long = System.currentTimeMillis(),
-    val accountId: String? = null
+    val accountId: String? = null,
+    val toAccountId: String? = null
 )
 
 @Serializable

@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.moneymanagement.data.model.Account
@@ -53,7 +54,8 @@ fun AccountCardsCarousel(
     onTopUpClick: (Account) -> Unit,
     onAddNewCard: () -> Unit,
     onManageCards: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onTransferClick: (() -> Unit)? = null
 ) {
     val listState = rememberLazyListState()
 
@@ -69,13 +71,16 @@ fun AccountCardsCarousel(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.weight(1f, fill = false)
             ) {
                 Text(
                     text = "My Cards & Wallets",
                     color = ShadcnTheme.colors.foreground,
                     fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 ShadcnBadge(
                     text = "${accounts.size} Cards",
@@ -83,19 +88,58 @@ fun AccountCardsCarousel(
                 )
             }
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ShadcnButtonText(
+                text = "Manage",
+                variant = ButtonVariant.OUTLINE,
+                onClick = onManageCards
+            )
+        }
+
+        // Action Row for Cards & Wallets
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (onTransferClick != null && accounts.size >= 2) {
+                ShadcnButton(
+                    onClick = onTransferClick,
+                    modifier = Modifier.weight(1f),
+                    variant = ButtonVariant.SECONDARY,
+                    contentPadding = PaddingValues(vertical = 8.dp)
+                ) {
+                    CategoryIcon(
+                        iconName = "SwapHoriz",
+                        tint = ShadcnTheme.colors.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Transfer Funds",
+                        color = ShadcnTheme.colors.foreground,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            ShadcnButton(
+                onClick = onAddNewCard,
+                modifier = Modifier.weight(1f),
+                variant = ButtonVariant.PRIMARY,
+                contentPadding = PaddingValues(vertical = 8.dp)
             ) {
-                ShadcnButtonText(
-                    text = "+ Add",
-                    variant = ButtonVariant.PRIMARY,
-                    onClick = onAddNewCard
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = null,
+                    tint = ShadcnTheme.colors.primaryForeground,
+                    modifier = Modifier.size(16.dp)
                 )
-                ShadcnButtonText(
-                    text = "Manage",
-                    variant = ButtonVariant.OUTLINE,
-                    onClick = onManageCards
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Add Card / Wallet",
+                    color = ShadcnTheme.colors.primaryForeground,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }

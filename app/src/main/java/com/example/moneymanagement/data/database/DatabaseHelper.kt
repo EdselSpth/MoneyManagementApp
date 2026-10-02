@@ -61,7 +61,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
                 note TEXT,
                 payment_method TEXT NOT NULL,
                 created_at INTEGER NOT NULL,
-                account_id TEXT
+                account_id TEXT,
+                to_account_id TEXT
             )
         """.trimIndent())
 
@@ -130,15 +131,21 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
             )
         """.trimIndent())
 
-        // Ensure transactions table has account_id column
+        // Ensure transactions table has account_id and to_account_id columns
         try {
             db.execSQL("ALTER TABLE transactions ADD COLUMN account_id TEXT")
+        } catch (_: Exception) {
+            // Already exists
+        }
+        try {
+            db.execSQL("ALTER TABLE transactions ADD COLUMN to_account_id TEXT")
         } catch (_: Exception) {
             // Already exists
         }
 
         ensureDefaultAccounts(db)
         migrateCategoriesToEnglish(db)
+        ensureTransferCategory(db)
 
         // Ensure sample_data_initialized flag is set so deleted transactions never resurrect
         setSettingInternal(db, "sample_data_initialized", "1")
@@ -222,7 +229,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
             Category("exp_entertainment", "Entertainment", "Movie", "#6366F1", TransactionType.EXPENSE, BudgetGroup.WANTS),
             Category("exp_hobby", "Hobbies & Leisure", "Palette", "#14B8A6", TransactionType.EXPENSE, BudgetGroup.WANTS),
 
-            Category("exp_savings", "Savings Deposit", "Savings", "#22C55E", TransactionType.EXPENSE, BudgetGroup.SAVINGS)
+            Category("exp_savings", "Savings Deposit", "Savings", "#22C55E", TransactionType.EXPENSE, BudgetGroup.SAVINGS),
+            Category("cat_transfer", "Account Transfer", "SwapHoriz", "#38BDF8", TransactionType.TRANSFER, BudgetGroup.INCOME)
         )
 
         defaultCategories.forEach { cat ->
@@ -401,6 +409,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
             put("payment_method", tx.paymentMethod.name)
             put("created_at", tx.createdAt)
             put("account_id", tx.accountId)
+            put("to_account_id", tx.toAccountId)
         }
         db.insertWithOnConflict("transactions", null, values, SQLiteDatabase.CONFLICT_REPLACE)
     }
@@ -492,9 +501,18 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         db.beginTransaction()
         try {
             insertTx(db, t)
-            t.accountId?.let { accId ->
-                val delta = if (t.type == TransactionType.INCOME) t.amount else -t.amount
-                db.execSQL("UPDATE accounts SET balance = balance + ? WHERE id = ?", arrayOf(delta, accId))
+            if (t.type == TransactionType.TRANSFER) {
+                t.accountId?.let { fromAccId ->
+                    db.execSQL("UPDATE accounts SET balance = balance - ? WHERE id = ?", arrayOf(t.amount, fromAccId))
+                }
+                t.toAccountId?.let { toAccId ->
+                    db.execSQL("UPDATE accounts SET balance = balance + ? WHERE id = ?", arrayOf(t.amount, toAccId))
+                }
+            } else {
+                t.accountId?.let { accId ->
+                    val delta = if (t.type == TransactionType.INCOME) t.amount else -t.amount
+                    db.execSQL("UPDATE accounts SET balance = balance + ? WHERE id = ?", arrayOf(delta, accId))
+                }
             }
             db.setTransactionSuccessful()
         } finally {
@@ -506,18 +524,27 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         val db = writableDatabase
         db.beginTransaction()
         try {
-            val cursor = db.rawQuery("SELECT type, amount, account_id FROM transactions WHERE id = ?", arrayOf(id))
+            val cursor = db.rawQuery("SELECT type, amount, account_id, to_account_id FROM transactions WHERE id = ?", arrayOf(id))
             var txType: String? = null
             var amount: Long = 0
             var accountId: String? = null
+            var toAccountId: String? = null
             cursor.use {
                 if (it.moveToFirst()) {
                     txType = it.getString(0)
                     amount = it.getLong(1)
                     accountId = if (!it.isNull(2)) it.getString(2) else null
+                    toAccountId = if (it.columnCount > 3 && !it.isNull(3)) it.getString(3) else null
                 }
             }
-            if (accountId != null && txType != null) {
+            if (txType == TransactionType.TRANSFER.name) {
+                accountId?.let { fromAccId ->
+                    db.execSQL("UPDATE accounts SET balance = balance + ? WHERE id = ?", arrayOf(amount, fromAccId))
+                }
+                toAccountId?.let { toAccId ->
+                    db.execSQL("UPDATE accounts SET balance = balance - ? WHERE id = ?", arrayOf(amount, toAccId))
+                }
+            } else if (accountId != null && txType != null) {
                 val delta = if (txType == TransactionType.INCOME.name) -amount else amount
                 db.execSQL("UPDATE accounts SET balance = balance + ? WHERE id = ?", arrayOf(delta, accountId))
             }
@@ -528,9 +555,23 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         }
     }
 
+    private fun ensureTransferCategory(db: SQLiteDatabase) {
+        val values = ContentValues().apply {
+            put("id", "cat_transfer")
+            put("name", "Account Transfer")
+            put("icon_name", "SwapHoriz")
+            put("color_hex", "#38BDF8")
+            put("type", TransactionType.TRANSFER.name)
+            put("budget_group", BudgetGroup.INCOME.name)
+        }
+        db.insertWithOnConflict("categories", null, values, SQLiteDatabase.CONFLICT_IGNORE)
+    }
+
     private fun mapTransaction(c: Cursor): Transaction {
         val accIdIdx = c.getColumnIndex("account_id")
         val accountId = if (accIdIdx != -1 && !c.isNull(accIdIdx)) c.getString(accIdIdx) else null
+        val toAccIdIdx = c.getColumnIndex("to_account_id")
+        val toAccountId = if (toAccIdIdx != -1 && !c.isNull(toAccIdIdx)) c.getString(toAccIdIdx) else null
         return Transaction(
             id = c.getString(c.getColumnIndexOrThrow("id")),
             type = TransactionType.valueOf(c.getString(c.getColumnIndexOrThrow("type"))),
@@ -540,7 +581,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
             note = c.getString(c.getColumnIndexOrThrow("note")) ?: "",
             paymentMethod = runCatching { PaymentMethod.valueOf(c.getString(c.getColumnIndexOrThrow("payment_method"))) }.getOrDefault(PaymentMethod.CARD),
             createdAt = c.getLong(c.getColumnIndexOrThrow("created_at")),
-            accountId = accountId
+            accountId = accountId,
+            toAccountId = toAccountId
         )
     }
 
