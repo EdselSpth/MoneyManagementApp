@@ -152,26 +152,28 @@ fun TransactionsScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     ShadcnInput(value = searchQuery, onValueChange = { searchQuery = it }, placeholder = "Search by note, category, date...", prefix = "🔍")
 
-                    Row(
+                    LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Chip(text = "All Types", isSelected = selectedTypeFilter == null, onClick = { selectedTypeFilter = null })
-                        Chip(text = "Income", isSelected = selectedTypeFilter == TransactionType.INCOME, activeColor = ShadcnTheme.colors.income, onClick = { selectedTypeFilter = TransactionType.INCOME })
-                        Chip(text = "Expense", isSelected = selectedTypeFilter == TransactionType.EXPENSE, activeColor = ShadcnTheme.colors.expense, onClick = { selectedTypeFilter = TransactionType.EXPENSE })
-                        Chip(text = "Transfer", isSelected = selectedTypeFilter == TransactionType.TRANSFER, activeColor = ShadcnTheme.colors.primary, onClick = { selectedTypeFilter = TransactionType.TRANSFER })
-                        Chip(
-                            text = if (selectedDateFilter != null) "📅 $selectedDateFilter ✕" else "📅 Date",
-                            isSelected = selectedDateFilter != null,
-                            activeColor = ShadcnTheme.colors.primary,
-                            onClick = {
-                                if (selectedDateFilter != null) {
-                                    selectedDateFilter = null
-                                } else {
-                                    showDateFilterPicker = true
+                        item { Chip(text = "All Types", isSelected = selectedTypeFilter == null, onClick = { selectedTypeFilter = null }) }
+                        item { Chip(text = "Income", isSelected = selectedTypeFilter == TransactionType.INCOME, activeColor = ShadcnTheme.colors.income, onClick = { selectedTypeFilter = TransactionType.INCOME }) }
+                        item { Chip(text = "Expense", isSelected = selectedTypeFilter == TransactionType.EXPENSE, activeColor = ShadcnTheme.colors.expense, onClick = { selectedTypeFilter = TransactionType.EXPENSE }) }
+                        item { Chip(text = "Transfer", isSelected = selectedTypeFilter == TransactionType.TRANSFER, activeColor = ShadcnTheme.colors.primary, onClick = { selectedTypeFilter = TransactionType.TRANSFER }) }
+                        item {
+                            Chip(
+                                text = if (selectedDateFilter != null) "📅 $selectedDateFilter ✕" else "📅 Date",
+                                isSelected = selectedDateFilter != null,
+                                activeColor = ShadcnTheme.colors.primary,
+                                onClick = {
+                                    if (selectedDateFilter != null) {
+                                        selectedDateFilter = null
+                                    } else {
+                                        showDateFilterPicker = true
+                                    }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
 
                     if (showDateFilterPicker) {
@@ -374,7 +376,9 @@ private fun Chip(
             text = text,
             color = if (isSelected) activeColor else ShadcnTheme.colors.foreground,
             fontSize = 13.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
